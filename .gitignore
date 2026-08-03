@@ -1,0 +1,15 @@
+# Java
+*.class
+*.jar
+*.war
+*.log
+
+# Build output
+bin/
+out/
+build/
+target/
+
+# OS
+.DS_Store
+Thumbs.db
