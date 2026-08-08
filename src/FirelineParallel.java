@@ -1,9 +1,10 @@
+import java.util.concurrent.ForkJoinPool;
 
 public class FirelineParallel {
 
     private static final int DEFAULT_MAXIMUM_STEPS = 5_000;
     private static final double DEFAULT_TOLERANCE = 0.05;
-    private static final int DEFAULT_SEQUENTIAL_CUTOFF = 100;
+    private static final int DEFAULT_SEQUENTIAL_CUTOFF = 4;
     private static final boolean DEFAULT_HUMAN_OUTPUT = true;
 
     public static void main(String[] args) {
@@ -51,8 +52,10 @@ public class FirelineParallel {
                         "The output prefix may not be empty.");
             }
 
+            ForkJoinPool pool = new ForkJoinPool();
+
             FireMapParallel map = new FireMapParallel(
-                    rows, columns, seed, mode, sequentialCutoff, landscape,
+                    rows, columns, seed, mode, pool, sequentialCutoff, landscape,
                     ignitionTopRow, ignitionLeftColumn, ignitionPatchSize);
 
             long startTime = System.nanoTime();
@@ -61,7 +64,7 @@ public class FirelineParallel {
             boolean converged = false;
 
             while (stepsCompleted < maximumSteps) {
-                result = map.step(mode);
+                result = map.stepParallel(mode, pool, sequentialCutoff);
                 stepsCompleted++;
 
                 if (mode == FireMapParallel.Mode.WILDFIRE) {
