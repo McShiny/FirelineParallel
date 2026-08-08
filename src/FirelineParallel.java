@@ -3,6 +3,8 @@ public class FirelineParallel {
 
     private static final int DEFAULT_MAXIMUM_STEPS = 5_000;
     private static final double DEFAULT_TOLERANCE = 0.05;
+    private static final int DEFAULT_SEQUENTIAL_CUTOFF = 100;
+    private static final boolean DEFAULT_HUMAN_OUTPUT = true;
 
     public static void main(String[] args) {
         if (args.length < 5 || args.length > 13 || (args.length > 10 && args.length < 13)) {
@@ -16,26 +18,32 @@ public class FirelineParallel {
             long seed = Long.parseLong(args[2]);
             FireMapParallel.Mode mode = FireMapParallel.Mode.fromString(args[3]);
             String outputPrefix = args[4].trim();
-            int maximumSteps = args.length >= 6
-                    ? parsePositiveInteger(args[5], "maximum steps")
+            int sequentialCutoff = args.length >= 6
+                    ? parsePositiveInteger(args[5], "sequential cutoff")
+                    : DEFAULT_SEQUENTIAL_CUTOFF;
+            boolean humanOutput = args.length >= 7
+                    ? Boolean.parseBoolean(args[6])
+                    : DEFAULT_HUMAN_OUTPUT;
+            int maximumSteps = args.length >= 8
+                    ? parsePositiveInteger(args[7], "maximum steps")
                     : DEFAULT_MAXIMUM_STEPS;
-            double tolerance = args.length >= 7
-                    ? parsePositiveDouble(args[6], "tolerance")
+            double tolerance = args.length >= 9
+                    ? parsePositiveDouble(args[8], "tolerance")
                     : DEFAULT_TOLERANCE;
-            FireMapParallel.Landscape landscape = args.length >= 8
-                    ? FireMapParallel.Landscape.fromString(args[7])
+            FireMapParallel.Landscape landscape = args.length >= 10
+                    ? FireMapParallel.Landscape.fromString(args[9])
                     : FireMapParallel.Landscape.MIXED;
 
             Integer ignitionTopRow = null;
             Integer ignitionLeftColumn = null;
             Integer ignitionPatchSize = null;
-            if (args.length == 11) {
+            if (args.length == 13) {
                 ignitionTopRow = parseNonNegativeInteger(
-                        args[8], "ignition top row");
+                        args[10], "ignition top row");
                 ignitionLeftColumn = parseNonNegativeInteger(
-                        args[9], "ignition left column");
+                        args[11], "ignition left column");
                 ignitionPatchSize = parsePositiveInteger(
-                        args[10], "ignition patch size");
+                        args[12], "ignition patch size");
             }
 
             if (outputPrefix.isEmpty()) {
@@ -44,7 +52,7 @@ public class FirelineParallel {
             }
 
             FireMapParallel map = new FireMapParallel(
-                    rows, columns, seed, mode, landscape,
+                    rows, columns, seed, mode, sequentialCutoff, landscape,
                     ignitionTopRow, ignitionLeftColumn, ignitionPatchSize);
 
             long startTime = System.nanoTime();
@@ -73,32 +81,39 @@ public class FirelineParallel {
 
             map.writeImages(outputPrefix);
 
-            System.out.println("Fireline serial simulation");
-            System.out.printf("Mode: %s%n", mode.name().toLowerCase());
-            System.out.printf("Rows: %d, Columns: %d%n", rows, columns);
-            System.out.printf("Random seed: %d%n", seed);
-            System.out.printf("Landscape: %s%n",
-                    landscape.name().toLowerCase());
-            System.out.printf("Initial source: %s%n",
-                    map.getSourceDescription());
-            System.out.printf("Timesteps completed: %d%n", stepsCompleted);
-            System.out.printf("Converged: %s%n", converged ? "yes" : "no");
-            System.out.printf("Final burning cells: %d%n",
-                    result == null ? 0 : result.getBurningCells());
-            System.out.printf("Cells burned: %d%n", map.countBurnedCells());
-            System.out.printf("Maximum peak temperature: %.3f%n",
-                    map.getMaximumPeakTemperature());
-            System.out.printf("Maximum change in final timestep: %.6f%n",
-                    result == null
-                            ? 0.0
-                            : result.getMaximumTemperatureChange());
-            System.out.printf("Core simulation time: %.3f ms%n",
-                    elapsedMilliseconds);
-            System.out.printf("Images written with prefix: %s%n", outputPrefix);
+            if (humanOutput) {
 
-            if (!converged) {
-                System.out.println(
-                        "Warning: maximum timestep limit reached before convergence.");
+                System.out.println("Fireline serial simulation");
+                System.out.printf("Mode: %s%n", mode.name().toLowerCase());
+                System.out.printf("Rows: %d, Columns: %d%n", rows, columns);
+                System.out.printf("Random seed: %d%n", seed);
+                System.out.printf("Landscape: %s%n",
+                        landscape.name().toLowerCase());
+                System.out.printf("Initial source: %s%n",
+                        map.getSourceDescription());
+                System.out.printf("Timesteps completed: %d%n", stepsCompleted);
+                System.out.printf("Converged: %s%n", converged ? "yes" : "no");
+                System.out.printf("Final burning cells: %d%n",
+                        result == null ? 0 : result.getBurningCells());
+                System.out.printf("Cells burned: %d%n", map.countBurnedCells());
+                System.out.printf("Maximum peak temperature: %.3f%n",
+                        map.getMaximumPeakTemperature());
+                System.out.printf("Maximum change in final timestep: %.6f%n",
+                        result == null
+                                ? 0.0
+                                : result.getMaximumTemperatureChange());
+                System.out.printf("Core simulation time: %.3f ms%n",
+                        elapsedMilliseconds);
+                System.out.printf("Images written with prefix: %s%n", outputPrefix);
+
+                if (!converged) {
+                    System.out.println(
+                            "Warning: maximum timestep limit reached before convergence.");
+                }
+            } else {
+
+                // Something Spicy!!!
+
             }
 
         } catch (NumberFormatException exception) {
