@@ -2,7 +2,6 @@ JC := javac
 JAVA := java
 SRC_DIR := src
 BIN_DIR := bin
-MAIN ?= Main
 
 SOURCES := $(shell find $(SRC_DIR) -name '*.java' 2>/dev/null)
 ifeq ($(SOURCES),)
@@ -10,16 +9,24 @@ ifeq ($(SOURCES),)
 	SOURCES := $(shell find . -maxdepth 1 -name '*.java')
 endif
 
-.PHONY: all compile run clean
+MAIN_SERIAL   := FirelineSerial
+MAIN_PARALLEL := FirelineParallel
+
+.PHONY: all compile run run-serial run-parallel clean
 
 all: compile
 
 compile:
 	mkdir -p $(BIN_DIR)
-	$(JC) -d $(BIN_DIR) -cp $(SRC_DIR) $(SOURCES)
+	$(JC) --release 11 -d $(BIN_DIR) -cp $(SRC_DIR) $(SOURCES)
 
-run: compile
-	$(JAVA) -cp $(BIN_DIR) $(MAIN)
+run: run-parallel
+
+run-parallel: compile
+	$(JAVA) -cp $(BIN_DIR) $(MAIN_PARALLEL) $(ARGS)
+
+run-serial: compile
+	$(JAVA) -cp $(BIN_DIR) $(MAIN_SERIAL) $(ARGS)
 
 clean:
 	rm -rf $(BIN_DIR)
