@@ -55,7 +55,7 @@ public class FirelineParallel {
             ForkJoinPool pool = new ForkJoinPool();
 
             FireMapParallel map = new FireMapParallel(
-                    rows, columns, seed, mode, pool, sequentialCutoff, landscape,
+                    rows, columns, seed, mode, pool, landscape,
                     ignitionTopRow, ignitionLeftColumn, ignitionPatchSize);
 
             long startTime = System.nanoTime();
