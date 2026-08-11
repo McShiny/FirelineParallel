@@ -1,9 +1,6 @@
 import subprocess
 import csv
 import itertools
-import argparse
-import platform
-import os
 from pathlib import Path
 from dataclasses import dataclass, fields
 
@@ -72,16 +69,15 @@ def run_program(name, args):
                     timeout=180, capture_output=True, text=True)
         
         if result.returncode != 0:
-            print(result.stderr)
-            raise Exception("Running " + name + " program Failed")
+            raise Exception("Running " + name + " program Failed\n" + result.stderr)
         else:
             return result.stdout
     except subprocess.TimeoutExpired as e:
-        print(f"Program timed out after {e.timeout} seconds.")
-        print(f"Program run: {e.cmd}")
+        raise Exception("Timeout Error\n" + f"Program run: {e.cmd}\n" + f"Program timed out after {e.timeout} seconds.")
 
     
 def process_output(output):
+
     integers = {"random seed": "seed", "timesteps completed": "timesteps", "final burning cells": "final_burning_cells", 
     "cells burned": "cells_burned"}
     floats = {"maximum peak temperature": "max_peak_temp", "maximum change in final timestep": "max_final_change", 
@@ -117,6 +113,7 @@ def process_output(output):
 
 def build_csv_row_full(scenario, kind, repitition):
     output = process_output(run_program(kind, scenario))
+
     output["kind"] = kind
     output["rep"] = repitition
 
@@ -137,6 +134,7 @@ def build_csv_row_cutoff(scenario, kind, repitition):
     included = ["kind", "rows", "columns", "cutoff", "sim_time", "rep", "warning"]
 
     output = process_output(run_program(kind, scenario))
+
     output["kind"] = kind
     output["rep"] = repitition
 
@@ -148,11 +146,12 @@ def build_csv_row_cutoff(scenario, kind, repitition):
     if "warning" not in output:
         output["warning"] = None
     
+    truncated_output = dict()
     for elem in output:
-        if elem not in included:
-            output.pop(elem)
+        if elem in included:
+            truncated_output[elem] = output[elem]
 
-    return output
+    return truncated_output
 
 # CSV creating functions
 
@@ -189,6 +188,7 @@ for elem in itertools.product(num_rows, num_cols, seeds, modes, cutoffs, steps,
 rows = []
 repetitions = 2
 printed_percents = []
+success = 0
 
 # creating list of dictionaries(csv lines)
 print("Creating csv rows")
@@ -197,8 +197,16 @@ for i in range(len(scenarios)):
         print(f"Percent Complete: {(i * 100) // len(scenarios)}%")
         printed_percents.append((i * 100) // len(scenarios))
     for j in range(repetitions):
-        rows.append(build_csv_row_speed(scenarios[i], "parallel", j))
-        # rows.append(build_csv_row(scenarios[i], "serial", j))
+        try:
+            rows.append(build_csv_row_cutoff(scenarios[i], "parallel", j))
+            success += 1
+            # rows.append(build_csv_row(scenarios[i], "serial", j))
+        except Exception as e:
+            print("Error")
+            print(f"Run {i * repetitions + j + 1}")
+            print("Scenario:", *scenarios[i])
+            print()
+            print(e.args)
 
 print()
 print("Creating rows finished")
@@ -207,4 +215,9 @@ print("Creating rows finished")
 print()
 print("Writing files")
 write_csv_full(rows)
+
+print()
+print("Test Finished")
+print(f"Tested {len(scenarios)} configurations")
+print(f"{success} sucessful runs")
 
