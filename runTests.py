@@ -112,6 +112,10 @@ def process_output(output):
     return processed_output
 
 def build_csv_row_full(scenario, kind, repitition):
+
+    def shorten_source(s):
+        return s[s.find("("):s.find(")") + 1] + ", " + s.split(",")[2].split("=")[-1] + ", " + s[s.rfind("=") + 1:]
+
     output = process_output(run_program(kind, scenario))
 
     output["kind"] = kind
@@ -121,6 +125,9 @@ def build_csv_row_full(scenario, kind, repitition):
         output["cutoff"] = None
     else:
         output["cutoff"] = scenario[4]
+
+    output["prefix"] = output["prefix"].split("/")[-1]
+    output["initial_source"] = shorten_source(output["initial_source"])
 
     output["max_steps"] = scenario[5]
     output["tolerance"] = scenario[6]
@@ -129,29 +136,6 @@ def build_csv_row_full(scenario, kind, repitition):
         output["warning"] = None
 
     return output
-
-def build_csv_row_cutoff(scenario, kind, repitition):
-    included = ["kind", "rows", "columns", "cutoff", "sim_time", "rep", "warning"]
-
-    output = process_output(run_program(kind, scenario))
-
-    output["kind"] = kind
-    output["rep"] = repitition
-
-    if kind.lower() == "serial":
-        output["cutoff"] = None
-    else:
-        output["cutoff"] = scenario[4]
-
-    if "warning" not in output:
-        output["warning"] = None
-    
-    truncated_output = dict()
-    for elem in output:
-        if elem in included:
-            truncated_output[elem] = output[elem]
-
-    return truncated_output
 
 # CSV creating functions
 
@@ -166,11 +150,11 @@ def write_csv_full(rows):
         writer.writerows(rows)
 
 # data arrays
-num_rows = [500, 300, 700]
-num_cols = [500, 300, 700]
+num_rows = [500, 300]
+num_cols = [500, 300]
 seeds = [17]
 modes = ["wildfire"]
-cutoffs = [4, 5, 6]
+cutoffs = [6]
 steps = [5000]
 tolerances = [0.05]
 landscapes = ["mixed"]
@@ -189,6 +173,7 @@ rows = []
 repetitions = 2
 printed_percents = []
 success = 0
+fail = 0
 
 # creating list of dictionaries(csv lines)
 print("Creating csv rows")
@@ -198,15 +183,17 @@ for i in range(len(scenarios)):
         printed_percents.append((i * 100) // len(scenarios))
     for j in range(repetitions):
         try:
-            rows.append(build_csv_row_cutoff(scenarios[i], "parallel", j))
+            rows.append(build_csv_row_full(scenarios[i], "parallel", j))
             success += 1
-            # rows.append(build_csv_row(scenarios[i], "serial", j))
+            rows.append(build_csv_row_full(scenarios[i], "serial", j))
+            success += 1
         except Exception as e:
             print("Error")
             print(f"Run {i * repetitions + j + 1}")
             print("Scenario:", *scenarios[i])
             print()
             print(e.args)
+            fail += 1
 
 print()
 print("Creating rows finished")
@@ -218,6 +205,7 @@ write_csv_full(rows)
 
 print()
 print("Test Finished")
-print(f"Tested {len(scenarios)} configurations")
+print(f"Tested {success + fail} configurations")
 print(f"{success} sucessful runs")
+print(f"{fail} failed runs")
 
