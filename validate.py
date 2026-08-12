@@ -1,4 +1,5 @@
 import csv
+import hashlib
 
 MUST_MATCH_FIELDS = ["timesteps", "converged", "final_burning_cells", "cells_burned",
                      "max_peak_temp", "max_final_change"]
@@ -10,8 +11,6 @@ strings = [ "mode", "landscape", "initial_source", "prefix", "warning", "kind"]
 booleans = ["converged"]
 
 def find_group(row, output):
-    if row["warning"] != None:
-        return
 
     if len(output) == 0:
         output.append(list())
@@ -71,17 +70,73 @@ def read_csv(path):
         
         return output
 
+def check_group(group):
+    for i in range(len(group) - 1):
+        for elem in MUST_MATCH_FIELDS:
+            if group[i][elem] != group[i + 1][elem]:
+                return False
+    
+    return True
+
+def image_path_row(row, kind):
+    return f"output/{row["prefix"]}_{kind}.png"
+
+def hash_file(path):
+    hasher = hashlib.sha256()
+
+    with open(path, "rb") as file:
+
+        while chunk := file.read(8192):
+            hasher.update(chunk)
+
+    return hasher.hexdigest()
+
+def check_kind(hashes):
+    for i in range(len(hashes) - 1):
+        if hashes[i] != hashes[i + 1]:
+            return False
+
+    return True
+
+def compare_group_images(group):
+    terrain = []
+    peak = []
+    final = []
+
+    for i in range(len(group)):
+        terrain.append(hash_file(image_path_row(group[i], "terrain")))
+        peak.append(hash_file(image_path_row(group[i], "peak")))
+        final.append(hash_file(image_path_row(group[i], "final")))
+
+    return check_kind(terrain) and check_kind(peak) and check_kind(final)
+
 groups = read_csv("benchmarks/output.csv")
 
-count = 1
-for group in groups:
-    print("Group:", count)
-    print()
-    print()
-    for elem in group:
-        print(elem)
-        print()
-    count += 1
-    print()
-        
+print("Testing Data")
+print()
+success = 0
+incorrect = 0
+incorrect_num = []
+fail = 0
+fail_num = []
+for i in range(len(groups)):
+    try:
+        if check_group(groups[i]) and compare_group_images(groups[i]):
+            success += 1
+        else:
+            incorrect += 1
+            incorrect_num.append(i)
+    except Exception:
+        print("Error testing group:", i)
+        fail_num.append(i)
+        fail += 1
+
+print("Finished Testing")
+print("Tested:", success + fail + incorrect, "configurations")
+print(success, "Succeded")
+print(incorrect, "Incorrect")
+print(*incorrect_num)
+print(fail, "Failed")
+print(*fail_num)
+
 

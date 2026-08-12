@@ -39,13 +39,13 @@ def format_scenario(scen, kind):
     if kind.lower() == "serial":
         for i in range(len(scen)):
             if i == 4:
-                output.append(f"output/serial/{scenario_ser_id(scen)}")
+                output.append(f"output/{scenario_ser_id(scen)}")
                 continue # Skip appending cutoff for serial program
             output.append(str(scen[i]))
     elif kind.lower() == "parallel":
         for i in range(len(scen)):
             if i == 4:
-                output.append(f"output/parallel/{scenario_par_id(scen)}")
+                output.append(f"output/{scenario_par_id(scen)}")
                 # no continue as cutoff is required
             output.append(str(scen[i]))
     else:
