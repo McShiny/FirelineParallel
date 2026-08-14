@@ -1,4 +1,6 @@
 import csv
+import numpy as np
+import matplotlib.pyplot as plt
 
 MUST_MATCH_FIELDS = ["timesteps", "converged", "final_burning_cells", "cells_burned",
                      "max_peak_temp", "max_final_change"]
@@ -9,37 +11,17 @@ floats = ["max_peak_temp",  "max_final_change", "sim_time", "tolerance"]
 strings = [ "mode", "landscape", "initial_source", "prefix", "warning", "kind"]
 booleans = ["converged"]
 
-def find_group(row, output):
+def find_group(row, serial, parallel):
 
-    if len(output) == 0:
-        output.append(list())
-        output[0].append(row)
-        return
-    
-    found = False
-    for i in range(len(output)):
-        if row["kind"] == "serial":
-            if output[i][0]["kind"] == "serial":
-                if row["prefix"] == output[i][0]["prefix"]:
-                    output[i].append(row)
-                    found = True
-            elif row["prefix"] == output[i][0]["prefix"][:-2] + output[i][0]["prefix"][-1]:
-                output[i].append(row)
-                found = True
-        elif output[i][0]["kind"] == "serial":
-            if row["prefix"][:-2] + row["prefix"][-1] == output[i][0]["prefix"]:
-                output[i].append(row)
-                found = True
-        elif row["prefix"][:-2] + row["prefix"][-1] == output[i][0]["prefix"][:-2] + output[i][0]["prefix"][-1]:
-            output[i].append(row)
-            found = True
-
-    if not found:
-        output.append(list())
-        output[-1].append(row)
+    if row["kind"] == "serial" and row["converged"]:
+        serial.append(row)
+    elif row["converged"]:
+        parallel.append(row)
 
 def read_csv(path):
-    output = []
+    serial = []
+    parallel = []
+
     with open(path, mode="r", encoding="utf-8") as file:
         reader = csv.reader(file)
 
@@ -65,7 +47,40 @@ def read_csv(path):
                         converted_row[header[i]] = True
                     else:
                         converted_row[header[i]] = False
-            find_group(converted_row, output)
+            find_group(converted_row, serial, parallel)
         
-        return output
+        return np.array(serial), np.array(parallel)
+
+def create_data_arrays(x_name, y_name, dict_data):
+    x_data = []
+    y_data = []
+
+    if x_name == "size":
+        for elem in dict_data:
+            for key in elem:
+                if key == y_name:
+                    y_data.append(elem[key])
+            
+            x_data.append(elem["rows"] * elem["columns"])
+
+        return x_data, y_data
+    
+    for elem in dict_data:
+        for key in elem:
+            if key == x_name:
+                x_data.append(elem[key])
+            elif key == y_name:
+                y_data.append(elem[key])
+
+    return x_data, y_data
+
+def plot_data(x1, y1, x2, y2):
+    plt.scatter(x1, y1, label="Serial")
+    plt.scatter(x2, y2, label="Parallel")
+    plt.show()
+
+serial_dicts, parallel_dicts = read_csv("benchmarks/output.csv")
+
+plot_data(*create_data_arrays("size", "sim_time", serial_dicts),
+          *create_data_arrays("size", "sim_time", parallel_dicts))
 
