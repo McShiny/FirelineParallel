@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 MUST_MATCH_FIELDS = ["timesteps", "converged", "final_burning_cells", "cells_burned",
                      "max_peak_temp", "max_final_change"]
@@ -74,13 +75,37 @@ def create_data_arrays(x_name, y_name, dict_data):
 
     return x_data, y_data
 
+def best_per_y(x, y):
+    output_x, output_y = copy.copy(x), copy.copy(y)
+    num_pops = 0
+
+    current = 1
+    while current < len(x):
+        while current < len(x) and x[current - 1] == x[current]:
+            if y[current - 1] < y[current]:
+                output_x.pop(current - num_pops)
+                output_y.pop(current - num_pops)
+                num_pops += 1
+            else:
+                output_x.pop(current - 1 - num_pops)
+                output_y.pop(current - 1 - num_pops)
+                num_pops += 1
+
+            current += 1
+
+        if current < len(x) and x[current - 1] != x[current]:
+            current += 1
+
+    return output_x, output_y
+
+
 def plot_data(x1, y1, x2, y2):
     plt.scatter(x1, y1, label="Serial")
-    plt.scatter(x2, y2, label="Parallel")
+    plt.plot(x2, y2, label="Parallel")
     plt.show()
 
-serial_dicts, parallel_dicts = read_csv("benchmarks/output.csv")
+serial_dicts, parallel_dicts = read_csv("benchmarks/output_cutoffs.csv")
 
-plot_data(*create_data_arrays("size", "sim_time", serial_dicts),
-          *create_data_arrays("size", "sim_time", parallel_dicts))
+plot_data(*best_per_y(*create_data_arrays("cutoff", "sim_time", serial_dicts)),
+          *best_per_y(*create_data_arrays("cutoff", "sim_time", parallel_dicts)))
 

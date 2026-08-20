@@ -66,7 +66,7 @@ def run_program(name, args):
     try:
         result = subprocess.run(["make", "run-" + name, 
                     f"ARGS={" ".join(list(map(lambda x: str(x), format_scenario(args, name))))}"], 
-                    timeout=180, capture_output=True, text=True)
+                    timeout=4800, capture_output=True, text=True)
         
         if result.returncode != 0:
             raise Exception("Running " + name + " program Failed\n" + result.stderr)
@@ -141,7 +141,7 @@ def build_csv_row_full(scenario, kind, repitition):
 
 def write_csv_full(rows):
     Path("benchmarks").mkdir(parents=True, exist_ok=True)
-    with open("benchmarks/output.csv", mode="w", newline="", encoding="utf-8") as file:
+    with open("benchmarks/output_validation_real.csv", mode="w", newline="", encoding="utf-8") as file:
 
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
 
@@ -150,27 +150,26 @@ def write_csv_full(rows):
         writer.writerows(rows)
 
 # data arrays
-num_rows = [500, 300]
-num_cols = [500, 300]
-seeds = [17]
-modes = ["wildfire"]
-cutoffs = [6]
-steps = [5000]
-tolerances = [0.05]
-landscapes = ["mixed"]
+size = [[300, 300], [300, 500], [500, 300], [500, 500]]
+seeds = [17, 21, 12]
+modes = ["wildfire", "diffusion"]
+cutoffs = [5, 10]
+steps = [5000, 2500]
+tolerances = [0.05, 0.1, 0.025]
+landscapes = ["mixed", "grass"]
 
 
 # building scenarios
 scenarios = []
 
-for elem in itertools.product(num_rows, num_cols, seeds, modes, cutoffs, steps,
+for elem in itertools.product(size, seeds, modes, cutoffs, steps,
                               tolerances, landscapes):
-    scenarios.append(Scenario(elem[0], elem[1], elem[2], elem[3], elem[4], elem[5],
-                              elem[6], elem[7]))
+    scenarios.append(Scenario(elem[0][0], elem[0][1], elem[1], elem[2], elem[3], elem[4],
+                              elem[5], elem[6]))
 
 # outputting runs of each scenario to csv
 rows = []
-repetitions = 2
+repetitions = 3
 printed_percents = []
 success = 0
 fail = 0
