@@ -18,29 +18,37 @@ public class FirelineParallel {
             long seed = Long.parseLong(args[2]);
             FireMapParallel.Mode mode = FireMapParallel.Mode.fromString(args[3]);
             String outputPrefix = args[4].trim();
-            int sequentialCutoff = args.length >= 6
-                    ? parsePositiveInteger(args[5], "sequential cutoff")
-                    : DEFAULT_SEQUENTIAL_CUTOFF;
-            int maximumSteps = args.length >= 7
-                    ? parsePositiveInteger(args[6], "maximum steps")
+
+            boolean has_cutoff = cutoffArgumentPresent(args);
+            int i = 5;
+            int sequentialCutoff;
+
+            if (has_cutoff) {
+                sequentialCutoff = parsePositiveInteger(args[i++], "sequential cutoff");
+            } else {
+                sequentialCutoff = DEFAULT_SEQUENTIAL_CUTOFF;
+            }
+
+            int maximumSteps = args.length > i
+                    ? parsePositiveInteger(args[i++], "maximum steps")
                     : DEFAULT_MAXIMUM_STEPS;
-            double tolerance = args.length >= 8
-                    ? parsePositiveDouble(args[7], "tolerance")
+            double tolerance = args.length > i
+                    ? parsePositiveDouble(args[i++], "tolerance")
                     : DEFAULT_TOLERANCE;
-            FireMapParallel.Landscape landscape = args.length >= 9
-                    ? FireMapParallel.Landscape.fromString(args[8])
+            FireMapParallel.Landscape landscape = args.length > i
+                    ? FireMapParallel.Landscape.fromString(args[i++])
                     : FireMapParallel.Landscape.MIXED;
 
             Integer ignitionTopRow = null;
             Integer ignitionLeftColumn = null;
             Integer ignitionPatchSize = null;
-            if (args.length == 12) {
+            if (args.length - i == 3) {
                 ignitionTopRow = parseNonNegativeInteger(
-                        args[9], "ignition top row");
+                        args[i++], "ignition top row");
                 ignitionLeftColumn = parseNonNegativeInteger(
-                        args[10], "ignition left column");
+                        args[i++], "ignition left column");
                 ignitionPatchSize = parsePositiveInteger(
-                        args[11], "ignition patch size");
+                        args[i++], "ignition patch size");
             }
 
             if (outputPrefix.isEmpty()) {
@@ -80,7 +88,7 @@ public class FirelineParallel {
 
             map.writeImages(outputPrefix);
 
-            System.out.println("Fireline serial simulation");
+            System.out.println("Fireline parallel simulation");
             System.out.printf("Mode: %s%n", mode.name().toLowerCase());
             System.out.printf("Rows: %d, Columns: %d%n", rows, columns);
             System.out.printf("Random seed: %d%n", seed);
@@ -162,6 +170,25 @@ public class FirelineParallel {
         System.err.println(
                 "  java FirelineParallel 2000 2000 17 wildfire "
                         + "output/benchmark 6 50000 0.05 grass 20 20 9");
+    }
+
+    private static boolean cutoffArgumentPresent(String[] args) {
+        if (args.length <= 5)
+            return false;
+        if (args.length == 11)
+            return false;
+        if (args.length == 12 || args.length == 9)
+            return true;
+        for (int i = 5; i < args.length; i++) {
+            String token = args[i];
+            if (token.equalsIgnoreCase("mixed") || token.equalsIgnoreCase("grass")) {
+                return i == 8;
+            }
+            if (token.contains(".")) {
+                return i == 7;
+            }
+        }
+        return true;
     }
 
 }
