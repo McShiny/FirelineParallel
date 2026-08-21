@@ -141,7 +141,7 @@ def build_csv_row_full(scenario, kind, repitition):
 
 def write_csv_full(rows):
     Path("benchmarks").mkdir(parents=True, exist_ok=True)
-    with open("benchmarks/output_validation_real.csv", mode="w", newline="", encoding="utf-8") as file:
+    with open("benchmarks/output_ser_v_per_gen.csv", mode="w", newline="", encoding="utf-8") as file:
 
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
 
@@ -150,13 +150,13 @@ def write_csv_full(rows):
         writer.writerows(rows)
 
 # data arrays
-size = [[300, 300], [300, 500], [500, 300], [500, 500]]
-seeds = [17, 21, 12]
-modes = ["wildfire", "diffusion"]
+size = [[100, 300], [300, 100], [300, 300], [300, 500], [500, 300], [500, 500]]
+seeds = [21]
+modes = ["wildfire"]
 cutoffs = [5, 10]
-steps = [5000, 2500]
-tolerances = [0.05, 0.1, 0.025]
-landscapes = ["mixed", "grass"]
+steps = [5000]
+tolerances = [0.05]
+landscapes = ["mixed"]
 
 
 # building scenarios
@@ -169,7 +169,7 @@ for elem in itertools.product(size, seeds, modes, cutoffs, steps,
 
 # outputting runs of each scenario to csv
 rows = []
-repetitions = 3
+repetitions = 12
 printed_percents = []
 success = 0
 fail = 0
