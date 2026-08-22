@@ -7,7 +7,7 @@ MUST_MATCH_FIELDS = ["timesteps", "converged", "final_burning_cells", "cells_bur
                      "max_peak_temp", "max_final_change"]
 
 integers = ["rows", "columns", "seed", "timesteps", "final_burning_cells",
-            "cells_burned", "rep", "cutoff", "max_steps"]
+            "cells_burned", "rep", "cutoff", "max_steps", "cores"]
 floats = ["max_peak_temp",  "max_final_change", "sim_time", "tolerance"]
 strings = [ "mode", "landscape", "initial_source", "prefix", "warning", "kind"]
 booleans = ["converged"]
@@ -104,8 +104,8 @@ def plot_data(x1, y1, x2, y2):
     plt.plot(x2, y2, label="Parallel")
     plt.show()
 
-serial_dicts, parallel_dicts = read_csv("benchmarks/output_ser_v_par_square_size.csv")
+serial_dicts, parallel_dicts = read_csv("benchmarks/output_cores.csv")
 
-plot_data(*best_per_y(*create_data_arrays("size", "sim_time", serial_dicts)),
-          *best_per_y(*create_data_arrays("size", "sim_time", parallel_dicts)))
+plot_data(*best_per_y(*create_data_arrays("cores", "sim_time", serial_dicts)),
+          *best_per_y(*create_data_arrays("cores", "sim_time", parallel_dicts)))
 
