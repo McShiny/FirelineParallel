@@ -3,6 +3,8 @@ import csv
 import itertools
 from pathlib import Path
 from dataclasses import dataclass, fields
+import os
+import re
 
 @dataclass
 class Scenario:
@@ -24,14 +26,15 @@ class Scenario:
 
 # creates a unique id for each relevant scen
 # structure: first 3 numbers rows, first 3 numbers columns, first letter mode, cutoff
-# number(skipped for serial), first letter landscape
+# number(skipped for serial), 2 numbers removed max_steps, tolerance, 
+# first letter landscape
 def scenario_par_id(scenario):
     return f"{scenario[0] // 10}{scenario[1] //
-        10}{scenario[2]}{scenario[3][0]}{scenario[4]}{scenario[7][0]}"
+        10}{scenario[2]}{scenario[3][0]}{scenario[4]}{scenario[5] // 100}{scenario[6]}{scenario[7][0]}"
 
 def scenario_ser_id(scenario):
     return f"{scenario[0] // 10}{scenario[1] //
-        10}{scenario[2]}{scenario[3][0]}{scenario[7][0]}"
+        10}{scenario[2]}{scenario[3][0]}{scenario[5] // 100}{scenario[6]}{scenario[7][0]}"
 
 def format_scenario(scen, kind):
     output = []
@@ -60,13 +63,17 @@ def compile_project():
         print(result.stderr)
         raise Exception("Compilation Failed")
 
-def run_program(name, args):
+def run_program(name, args, extra_env=None):
     compile_project()
+
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
     
     try:
         result = subprocess.run(["make", "run-" + name, 
                     f"ARGS={" ".join(list(map(lambda x: str(x), format_scenario(args, name))))}"], 
-                    timeout=4800, capture_output=True, text=True)
+                    timeout=4800, capture_output=True, text=True, env=env)
         
         if result.returncode != 0:
             raise Exception("Running " + name + " program Failed\n" + result.stderr)
@@ -111,12 +118,18 @@ def process_output(output):
 
     return processed_output
 
-def build_csv_row_full(scenario, kind, repitition):
+def extract_core_count(extra_env):
+    if not extra_env or "_JAVA_OPTIONS" not in extra_env:
+        return os.cpu_count()
+    match = re.search(r"ActiveProcessorCount=(\d+)", extra_env["_JAVA_OPTIONS"])
+    return int(match.group(1)) if match else os.cpu_count()
+
+def build_csv_row_full(scenario, kind, repitition, extra_env=None):
 
     def shorten_source(s):
         return s[s.find("("):s.find(")") + 1] + ", " + s.split(",")[2].split("=")[-1] + ", " + s[s.rfind("=") + 1:]
 
-    output = process_output(run_program(kind, scenario))
+    output = process_output(run_program(kind, scenario, extra_env))
 
     output["kind"] = kind
     output["rep"] = repitition
@@ -131,6 +144,8 @@ def build_csv_row_full(scenario, kind, repitition):
 
     output["max_steps"] = scenario[5]
     output["tolerance"] = scenario[6]
+    if cores is not None:
+        output["cores"] = extract_core_count(extra_env)
 
     if "warning" not in output:
         output["warning"] = None
@@ -141,7 +156,7 @@ def build_csv_row_full(scenario, kind, repitition):
 
 def write_csv_full(rows):
     Path("benchmarks").mkdir(parents=True, exist_ok=True)
-    with open("benchmarks/output_ser_v_per_gen.csv", mode="w", newline="", encoding="utf-8") as file:
+    with open("benchmarks/output_validation_real.csv", mode="w", newline="", encoding="utf-8") as file:
 
         writer = csv.DictWriter(file, fieldnames=list(rows[0]))
 
@@ -150,13 +165,16 @@ def write_csv_full(rows):
         writer.writerows(rows)
 
 # data arrays
-size = [[100, 300], [300, 100], [300, 300], [300, 500], [500, 300], [500, 500]]
-seeds = [21]
-modes = ["wildfire"]
+size = [[300, 300], [100, 300], [300, 100], [500, 500], [300, 500], [500, 300]]
+seeds = [21, 17, 7]
+modes = ["wildfire", "diffusion"]
 cutoffs = [5, 10]
-steps = [5000]
-tolerances = [0.05]
-landscapes = ["mixed"]
+steps = [3000, 5000, 8000]
+tolerances = [0.05, 0.1, 0.01]
+landscapes = ["mixed", "grass"]
+
+
+cores = [20]
 
 
 # building scenarios
@@ -177,22 +195,24 @@ fail = 0
 # creating list of dictionaries(csv lines)
 print("Creating csv rows")
 for i in range(len(scenarios)):
-    if (i * 100) // len(scenarios) not in printed_percents:
-        print(f"Percent Complete: {(i * 100) // len(scenarios)}%")
-        printed_percents.append((i * 100) // len(scenarios))
-    for j in range(repetitions):
-        try:
-            rows.append(build_csv_row_full(scenarios[i], "parallel", j))
-            success += 1
-            rows.append(build_csv_row_full(scenarios[i], "serial", j))
-            success += 1
-        except Exception as e:
-            print("Error")
-            print(f"Run {i * repetitions + j + 1}")
-            print("Scenario:", *scenarios[i])
-            print()
-            print(e.args)
-            fail += 1
+    for core in cores:
+        extra_env = {"_JAVA_OPTIONS": f"-XX:ActiveProcessorCount={core}"}
+        if (i * 100) // len(scenarios) not in printed_percents:
+            print(f"Percent Complete: {(i * 100) // len(scenarios)}%")
+            printed_percents.append((i * 100) // len(scenarios))
+        for j in range(repetitions):
+            try:
+                rows.append(build_csv_row_full(scenarios[i], "parallel", j, extra_env))
+                success += 1
+                rows.append(build_csv_row_full(scenarios[i], "serial", j, extra_env))
+                success += 1
+            except Exception as e:
+                print("Error")
+                print(f"Run {i * repetitions + j + 1}")
+                print("Scenario:", *scenarios[i])
+                print()
+                print(e.args)
+                fail += 1
 
 print()
 print("Creating rows finished")

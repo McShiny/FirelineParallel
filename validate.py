@@ -110,7 +110,7 @@ def compare_group_images(group):
 
     return check_kind(terrain) and check_kind(peak) and check_kind(final)
 
-groups = read_csv("benchmarks/output.csv")
+groups = read_csv("benchmarks/output_validation_real.csv")
 
 print("Testing Data")
 print()
